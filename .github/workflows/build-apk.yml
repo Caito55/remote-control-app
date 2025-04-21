@@ -17,13 +17,13 @@ jobs:
       with:
         python-version: "3.11"
 
-    - name: Install Flet
+    - name: Install dependencies
       run: |
-        pip install flet flet_core
+        pip install flet
 
     - name: Build APK
       run: |
-        pip install flet-core flet-runtime buildozer
+        pip install buildozer
         mkdir flet_build
         flet pack main.py --name RemoteControlApp --app-version 1.0.0 --platform android --output flet_build
 
