@@ -53,9 +53,12 @@ jobs:
     - name: Build APK with buildozer
       run: |
         buildozer android debug
+    - name: Archive APK
+      run: zip -r remote-control.zip flet_build
+
         
-    - name: Upload APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: RemoteControlApp-APK
-        path: bin/*.apk
+    # - name: Upload APK
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: RemoteControlApp-APK
+    #     path: bin/*.apk
