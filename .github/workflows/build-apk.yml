@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repo
@@ -44,7 +44,7 @@ jobs:
     - name: Install dependencies
       run: |
        sudo apt update
-       sudo apt install -y zip unzip libncurses5 openjdk-17-jdk python3-pip python3-setuptools git
+       sudo apt install -y zip unzip libncurses6 openjdk-17-jdk python3-pip python3-setuptools git
        pip install --upgrade pip
        pip install cython
 
