@@ -38,12 +38,15 @@ jobs:
           zlib1g-dev \
           libgstreamer1.0 \
           gstreamer1.0-plugins-base \
-          gstreamer1.0-plugins-good
+          gstreamer1.0-plugins-good \
+          
 
-    - name: Install Python dependencies
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+       sudo apt update
+       sudo apt install -y zip unzip libncurses5 openjdk-17-jdk python3-pip python3-setuptools git
+       pip install --upgrade pip
+       pip install cython
 
 
     - name: Build APK with buildozer
