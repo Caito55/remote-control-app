@@ -1,1 +1,2 @@
-flet
+flet>=0.15.0
+buildozer>=1.5.0
