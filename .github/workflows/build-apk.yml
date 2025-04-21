@@ -47,7 +47,6 @@ jobs:
 
     - name: Initialize buildozer
       run: |
-        buildozer init
         cp buildozer.spec .buildozer/
 
     - name: Build APK with buildozer
