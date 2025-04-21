@@ -45,9 +45,11 @@ jobs:
       - name: Build APK using Docker (Buildozer)
         run: |
           docker run --rm -v "$PWD":/home/user/hostcwd -w /home/user/hostcwd kivy/buildozer buildozer android debug
+      
 
+      
       - name: Upload APK as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: RemoteControl-APK
           path: bin/*.apk
