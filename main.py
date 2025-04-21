@@ -9,15 +9,17 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         page.update()
 
-    def create_button(text="", icon=None):
+    def create_button(icon, tooltip=""):
         return ft.ElevatedButton(
-            text=text if not icon else None,
-            icon=icon,
-            width=60,
-            height=60,
-            shape=ft.CircleBorder(),
-            on_click=btn_click
+            content=ft.Icon(name=icon),
+            on_click=lambda e: print(f"{icon} pressed"),
+            tooltip=tooltip,
+            style=ft.ButtonStyle(
+                padding=20,
+                shape=ft.RoundedRectangleBorder(radius=12),
+            )
         )
+
 
     page.add(
         ft.Column([
