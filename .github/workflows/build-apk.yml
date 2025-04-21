@@ -28,7 +28,7 @@ jobs:
         flet pack main.py --name RemoteControlApp --app-version 1.0.0 --platform android --output flet_build
 
     - name: Upload APK
-      uses: actions/upload-artifact@v3.1.3
+      uses: actions/upload-artifact@v3@8b0e1c8a6031d7a07c4d79084a979191d1989bfc
       with:
         name: RemoteControlApp-APK
         path: flet_build/dist/*.apk
