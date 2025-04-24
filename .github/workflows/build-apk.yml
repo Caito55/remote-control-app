@@ -19,22 +19,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      - name: Set up Java 8
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '8'
-
+          
       - name: Configure environment
         run: |
           # Setup Java paths
-          JAVA17_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
-          JAVA8_HOME=/usr/lib/jvm/temurin-8-jdk-amd64
-          
-          # Use Java 17 first for Android SDK setup
-          echo "JAVA_HOME=$JAVA17_HOME" >> $GITHUB_ENV
-          echo "PATH=$JAVA17_HOME/bin:$PATH" >> $GITHUB_ENV
+          echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
+          echo "PATH=/usr/lib/jvm/temurin-17-jdk-amd64/bin:$PATH" >> $GITHUB_ENV
           
           # Setup Android paths
           ANDROID_HOME=/usr/local/lib/android/sdk
@@ -50,30 +40,18 @@ jobs:
           echo "NDK_CCACHE=/usr/bin/ccache" >> $GITHUB_ENV
           echo "JAVA_OPTS=-Xmx4096m" >> $GITHUB_ENV
           echo "PATH=$PATH:~/.local/bin" >> $GITHUB_ENV
-          echo "JAVA17_HOME=$JAVA17_HOME" >> $GITHUB_ENV
-          echo "JAVA8_HOME=$JAVA8_HOME" >> $GITHUB_ENV
           
-          # Verify Java installations
-          echo "=== Java 17 ==="
-          $JAVA17_HOME/bin/java -version
-          echo "=== Java 8 ==="
-          $JAVA8_HOME/bin/java -version
+          # Verify Java installation
+          echo "=== Java Environment ==="
+          java -version
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Setup Android SDK with Java 17
+        
+      - name: Accept Android licenses and install components
         run: |
-          export JAVA_HOME=$JAVA17_HOME
-          export PATH=$JAVA17_HOME/bin:$PATH
-          
-          # Install Android SDK components
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-33" "build-tools;33.0.0" "ndk;27.2.12479018"
-          
-          # Switch back to Java 8 for buildozer
-          echo "JAVA_HOME=$JAVA8_HOME" >> $GITHUB_ENV
-          echo "PATH=$JAVA8_HOME/bin:$PATH" >> $GITHUB_ENV
+          sdkmanager --licenses --sdk_root=$ANDROID_HOME
+          sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-33" "build-tools;33.0.0" "ndk;27.2.12479018"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -116,7 +94,7 @@ jobs:
           android.gradle_dependencies = org.chromium:androidx.webkit:1.4.0
           p4a.branch = develop
           p4a.bootstrap = sdl2
-          android.java_version = 8
+          android.java_version = 17
           
           [buildozer]
           log_level = 2
@@ -124,7 +102,7 @@ jobs:
           android_sdk_path = /usr/local/lib/android/sdk
           android_ndk_path = /usr/local/lib/android/sdk/ndk/27.2.12479018
           android_api = 33
-          java_home = /usr/lib/jvm/temurin-8-jdk-amd64
+          java_home = /usr/lib/jvm/temurin-17-jdk-amd64
           EOF
 
       - name: Install Buildozer
@@ -135,47 +113,31 @@ jobs:
           sudo apt-get install -y automake
           ccache -M 50G
 
-      - name: Setup build environment
+      - name: Setup build directories
         run: |
-          # Asegurar Java 8 para buildozer
-          export JAVA_HOME=$JAVA8_HOME
-          export PATH=$JAVA8_HOME/bin:$PATH
-          
           # Crear y configurar directorios necesarios
           sudo mkdir -p /home/runner/.buildozer
           sudo mkdir -p /home/runner/.gradle
-          sudo mkdir -p $ANDROID_HOME
-          sudo mkdir -p $ANDROID_NDK_HOME
-          
-          # Configurar permisos
           sudo chown -R $USER:$USER /home/runner/.buildozer
           sudo chown -R $USER:$USER /home/runner/.gradle
           sudo chown -R $USER:$USER $ANDROID_HOME
-          sudo chown -R $USER:$USER $ANDROID_NDK_HOME
-          
-          # Verificar entorno final
-          echo "=== Java Environment ==="
-          java -version
-          echo "JAVA_HOME: $JAVA_HOME"
-          
-          echo "=== Android Environment ==="
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
-          
-      - name: Build APK with Java 8
+
+      - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: 0
-          JAVA_HOME: /usr/lib/jvm/temurin-8-jdk-amd64
           SKIP_JDK_VERSION_CHECK: true
         run: |
-          # Verificar version de Java
+          # Verificar entorno final
+          echo "=== Build Environment ==="
           java -version
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
           
           # Limpiar caché si existe
           rm -rf .buildozer || true
           
           # Construir APK con log detallado
-          JAVA_HOME=/usr/lib/jvm/temurin-8-jdk-amd64 buildozer android debug -v
+          buildozer -v android debug
       
 
       
