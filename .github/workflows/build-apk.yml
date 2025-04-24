@@ -22,7 +22,9 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y zip unzip libtool automake autoconf
+          sudo apt-get install -y zip unzip libtool automake autoconf build-essential python3-pip python3-dev git libffi-dev libssl-dev
+          sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+          sudo apt-get install -y libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
 
       - name: Prepare .buildozer directory
         run: |
@@ -42,9 +44,17 @@ jobs:
           echo 'android.permissions = INTERNET' >> buildozer.spec
           echo 'android.debug = 1' >> buildozer.spec
 
-      - name: Build APK using Docker (Buildozer)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Buildozer and build APK
         run: |
-          docker run --rm -v "$PWD":/home/user/hostcwd -w /home/user/hostcwd kivy/buildozer buildozer android debug
+          python -m pip install --upgrade pip
+          pip install --upgrade buildozer Cython==0.29.33
+          export PATH=$PATH:~/.local/bin
+          buildozer init
+          export BUILDOZER_WARN_ON_ROOT=0
+          buildozer android debug
       
 
       
