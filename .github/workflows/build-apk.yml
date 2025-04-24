@@ -45,23 +45,6 @@ jobs:
           echo "=== Java Environment ==="
           java -version
 
-      - name: Setup Android SDK with JAXB support
-        run: |
-          # Asegurar que JAXB está en el classpath
-          JAXB_LIBS="/usr/share/java/jaxb-api.jar:/usr/share/java/jaxb-runtime.jar:/usr/share/java/jakarta.xml.bind-api.jar"
-          export CLASSPATH=$JAXB_LIBS:$CLASSPATH
-          
-          # Configurar sdkmanager con JAXB
-          yes | CLASSPATH=$JAXB_LIBS $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            --sdk_root=$ANDROID_HOME \
-            --licenses
-          
-          CLASSPATH=$JAXB_LIBS $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            --sdk_root=$ANDROID_HOME \
-            "platforms;android-33" \
-            "build-tools;33.0.0" \
-            "ndk;27.2.12479018"
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -73,23 +56,80 @@ jobs:
           sudo apt-get install -y zip unzip libtool automake autoconf build-essential python3-pip python3-dev git libffi-dev libssl-dev
           sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
           sudo apt-get install -y libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
-          sudo apt-get install -y default-jdk wget lsb-release software-properties-common
+          sudo apt-get install -y default-jdk wget lsb-release software-properties-common maven
           sudo apt-get install -y ccache
+
+      - name: Setup JAXB dependencies
+        run: |
+          # Crear directorio para las dependencias
+          mkdir -p /home/runner/jaxb_libs
+          cd /home/runner/jaxb_libs
           
-          # Instalar módulos JAXB necesarios
-          sudo apt-get install -y jaxb \
-                                libjaxb-java \
-                                libjakarta-xml-bind-api-java \
-                                libxml-commons-external-java \
-                                libxml-commons-resolver1.1-java
+          # Descargar dependencias JAXB usando Maven
+          mvn dependency:get -Dartifact=javax.xml.bind:jaxb-api:2.3.1
+          mvn dependency:get -Dartifact=org.glassfish.jaxb:jaxb-runtime:2.3.1
+          mvn dependency:get -Dartifact=jakarta.xml.bind:jakarta.xml.bind-api:4.0.0
           
-          # Configurar classpath para JAXB
-          JAXB_LIBS="/usr/share/java/jaxb-api.jar:/usr/share/java/jaxb-runtime.jar:/usr/share/java/jakarta.xml.bind-api.jar"
+          # Copiar JARs al directorio
+          find ~/.m2/repository -name "jaxb-api-2.3.1.jar" -exec cp {} . \;
+          find ~/.m2/repository -name "jaxb-runtime-2.3.1.jar" -exec cp {} . \;
+          find ~/.m2/repository -name "jakarta.xml.bind-api-4.0.0.jar" -exec cp {} . \;
+          
+          # Configurar CLASSPATH
+          JAXB_LIBS=$(pwd)/*jar
           echo "CLASSPATH=$JAXB_LIBS:$CLASSPATH" >> $GITHUB_ENV
           
-          # Verificar instalación de JAXB
-          ls -l /usr/share/java/jaxb* || true
-          ls -l /usr/share/java/jakarta* || true
+          # Verificar JARs
+          ls -l *.jar
+
+      - name: Setup Android SDK
+        run: |
+          # Verificar las dependencias JAXB
+          echo "Using JAXB libraries from: $CLASSPATH"
+          ls -l /home/runner/jaxb_libs/*.jar
+          
+          # Ejecutar sdkmanager con JAXB en el classpath
+          java \
+            -Djavax.xml.accessExternalDTD=all \
+            -Djavax.xml.accessExternalSchema=all \
+            -jar $ANDROID_HOME/cmdline-tools/latest/lib/sdkmanager.jar \
+            --sdk_root=$ANDROID_HOME \
+            --licenses
+            
+          java \
+            -Djavax.xml.accessExternalDTD=all \
+            -Djavax.xml.accessExternalSchema=all \
+            -jar $ANDROID_HOME/cmdline-tools/latest/lib/sdkmanager.jar \
+            --sdk_root=$ANDROID_HOME \
+            "platforms;android-33" \
+            "build-tools;33.0.0" \
+            "ndk;27.2.12479018"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip unzip libtool automake autoconf build-essential python3-pip python3-dev git libffi-dev libssl-dev
+          sudo apt-get install -y libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev
+          sudo apt-get install -y libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
+          sudo apt-get install -y default-jdk wget lsb-release software-properties-common maven
+          sudo apt-get install -y ccache
+          
+          # Instalar Python y buildozer
+          python -m pip install --upgrade pip wheel
+          pip install --upgrade buildozer Cython==0.29.33
+          
+          # Configurar JAXB
+          mkdir -p /home/runner/jaxb_libs
+          cd /home/runner/jaxb_libs
+          
+          # Descargar e instalar JAXB usando Maven
+          mvn dependency:get -DremoteRepositories=https://repo1.maven.org/maven2 -Dartifact=javax.xml.bind:jaxb-api:2.3.1
+          mvn dependency:get -DremoteRepositories=https://repo1.maven.org/maven2 -Dartifact=org.glassfish.jaxb:jaxb-runtime:2.3.1
+          mvn dependency:copy-dependencies -DoutputDirectory=.
+          
+          # Configurar classpath
+          JAXB_LIBS=$(echo /home/runner/jaxb_libs/*.jar | tr ' ' ':')
+          echo "CLASSPATH=$JAXB_LIBS:$CLASSPATH" >> $GITHUB_ENV
 
       - name: Prepare buildozer.spec
         run: |
@@ -137,28 +177,37 @@ jobs:
           sudo apt-get install -y automake
           ccache -M 50G
 
-      - name: Setup build directories
+      - name: Prepare build environment
         run: |
-          # Crear y configurar directorios necesarios
+          # Crear y configurar directorios
           sudo mkdir -p /home/runner/.buildozer
           sudo mkdir -p /home/runner/.gradle
           sudo chown -R $USER:$USER /home/runner/.buildozer
           sudo chown -R $USER:$USER /home/runner/.gradle
           sudo chown -R $USER:$USER $ANDROID_HOME
+          
+          # Verificar entorno Java y Android
+          echo "=== Environment Check ==="
+          java -version
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "CLASSPATH: $CLASSPATH"
+          echo "JAXB libraries:"
+          ls -l /home/runner/jaxb_libs/
 
       - name: Build APK
         env:
           BUILDOZER_WARN_ON_ROOT: 0
-          SKIP_JDK_VERSION_CHECK: true
+          JAVA_OPTS: "-Djavax.xml.accessExternalDTD=all -Djavax.xml.accessExternalSchema=all"
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.2.12479018
+          JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
         run: |
-          # Verificar entorno final
-          echo "=== Build Environment ==="
-          java -version
-          echo "JAVA_HOME: $JAVA_HOME"
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          
-          # Limpiar caché si existe
+          # Limpiar caché anterior
           rm -rf .buildozer || true
+          
+          # Asegurar que JAXB está en el classpath
+          export CLASSPATH=$(echo /home/runner/jaxb_libs/*.jar | tr ' ' ':'):$CLASSPATH
           
           # Construir APK con log detallado
           buildozer -v android debug
