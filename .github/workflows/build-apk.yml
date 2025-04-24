@@ -45,13 +45,22 @@ jobs:
           echo "=== Java Environment ==="
           java -version
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        
-      - name: Accept Android licenses and install components
+      - name: Setup Android SDK with JAXB support
         run: |
-          sdkmanager --licenses --sdk_root=$ANDROID_HOME
-          sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-33" "build-tools;33.0.0" "ndk;27.2.12479018"
+          # Asegurar que JAXB está en el classpath
+          JAXB_LIBS="/usr/share/java/jaxb-api.jar:/usr/share/java/jaxb-runtime.jar:/usr/share/java/jakarta.xml.bind-api.jar"
+          export CLASSPATH=$JAXB_LIBS:$CLASSPATH
+          
+          # Configurar sdkmanager con JAXB
+          yes | CLASSPATH=$JAXB_LIBS $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=$ANDROID_HOME \
+            --licenses
+          
+          CLASSPATH=$JAXB_LIBS $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=$ANDROID_HOME \
+            "platforms;android-33" \
+            "build-tools;33.0.0" \
+            "ndk;27.2.12479018"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -66,6 +75,21 @@ jobs:
           sudo apt-get install -y libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev
           sudo apt-get install -y default-jdk wget lsb-release software-properties-common
           sudo apt-get install -y ccache
+          
+          # Instalar módulos JAXB necesarios
+          sudo apt-get install -y jaxb \
+                                libjaxb-java \
+                                libjakarta-xml-bind-api-java \
+                                libxml-commons-external-java \
+                                libxml-commons-resolver1.1-java
+          
+          # Configurar classpath para JAXB
+          JAXB_LIBS="/usr/share/java/jaxb-api.jar:/usr/share/java/jaxb-runtime.jar:/usr/share/java/jakarta.xml.bind-api.jar"
+          echo "CLASSPATH=$JAXB_LIBS:$CLASSPATH" >> $GITHUB_ENV
+          
+          # Verificar instalación de JAXB
+          ls -l /usr/share/java/jaxb* || true
+          ls -l /usr/share/java/jakarta* || true
 
       - name: Prepare buildozer.spec
         run: |
