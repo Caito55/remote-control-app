@@ -18,12 +18,12 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '8'
 
       - name: Configure environment
         run: |
           # Setup Java paths
-          JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+          JAVA_HOME=/usr/lib/jvm/temurin-8-jdk-amd64
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
           echo "PATH=$JAVA_HOME/bin:$PATH" >> $GITHUB_ENV
           
@@ -96,6 +96,7 @@ jobs:
           android.gradle_dependencies = org.chromium:androidx.webkit:1.4.0
           p4a.branch = develop
           p4a.bootstrap = sdl2
+          android.java_version = 8
           
           [buildozer]
           log_level = 2
@@ -103,6 +104,7 @@ jobs:
           android_sdk_path = /usr/local/lib/android/sdk
           android_ndk_path = /usr/local/lib/android/sdk/ndk/27.2.12479018
           android_api = 33
+          java_home = /usr/lib/jvm/temurin-8-jdk-amd64
           EOF
 
       - name: Install Buildozer
