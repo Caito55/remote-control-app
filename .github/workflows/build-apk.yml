@@ -14,24 +14,46 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Java and Android SDK
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configure environment
         run: |
-          # Configurar Java
-          export JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.15-6/x64
+          # Setup Java paths
+          JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
           echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
-          export PATH=$JAVA_HOME/bin:$PATH
-          java -version
+          echo "PATH=$JAVA_HOME/bin:$PATH" >> $GITHUB_ENV
           
-          # Configurar Android SDK
-          export ANDROID_HOME=/usr/local/lib/android/sdk
+          # Setup Android paths
+          ANDROID_HOME=/usr/local/lib/android/sdk
+          ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          export ANDROID_NDK_HOME=/usr/local/lib/android/sdk/ndk/27.2.12479018
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          echo "ANDROID_SDK_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools" >> $GITHUB_ENV
           
-          # Aceptar licencias y instalar componentes
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-33" "build-tools;33.0.0" "ndk;27.2.12479018"
+          # Setup build environment
+          echo "USE_CCACHE=1" >> $GITHUB_ENV
+          echo "NDK_CCACHE=/usr/bin/ccache" >> $GITHUB_ENV
+          echo "JAVA_OPTS=-Xmx4096m" >> $GITHUB_ENV
+          echo "PATH=$PATH:~/.local/bin" >> $GITHUB_ENV
+          
+          # Verify paths exist
+          ls -l $JAVA_HOME/bin/java || echo "Java not found in expected path"
+          ls -l $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager || echo "SDK Manager not found"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: |
+          sudo chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-33" "build-tools;33.0.0" "ndk;27.2.12479018"
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -65,6 +87,9 @@ jobs:
           android.api = 33
           android.minapi = 21
           android.ndk_api = 21
+          android.sdk_path = /usr/local/lib/android/sdk
+          android.ndk_path = /usr/local/lib/android/sdk/ndk/27.2.12479018
+          android.ant_path = /usr/bin/ant
           android.permissions = INTERNET
           android.debug = 1
           android.accept_sdk_license = True
@@ -75,20 +100,10 @@ jobs:
           [buildozer]
           log_level = 2
           warn_on_root = 0
+          android_sdk_path = /usr/local/lib/android/sdk
+          android_ndk_path = /usr/local/lib/android/sdk/ndk/27.2.12479018
+          android_api = 33
           EOF
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up environment variables
-        run: |
-          echo "USE_CCACHE=1" >> $GITHUB_ENV
-          echo "NDK_CCACHE=/usr/bin/ccache" >> $GITHUB_ENV
-          echo "JAVA_OPTS=-Xmx4096m" >> $GITHUB_ENV
-          echo "PATH=$PATH:~/.local/bin" >> $GITHUB_ENV
 
       - name: Install Buildozer
         run: |
@@ -98,15 +113,39 @@ jobs:
           sudo apt-get install -y automake
           ccache -M 50G
 
-      - name: Build APK
+      - name: Setup build environment
         run: |
-          # Verificar configuración
-          echo "Using JAVA_HOME: $JAVA_HOME"
-          echo "Using ANDROID_HOME: $ANDROID_HOME"
-          echo "Using ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
-          java -version
+          # Crear y configurar directorios necesarios
+          sudo mkdir -p /home/runner/.buildozer
+          sudo mkdir -p /home/runner/.gradle
+          sudo mkdir -p $ANDROID_HOME
+          sudo mkdir -p $ANDROID_NDK_HOME
           
-          # Construir APK
+          # Configurar permisos
+          sudo chown -R $USER:$USER /home/runner/.buildozer
+          sudo chown -R $USER:$USER /home/runner/.gradle
+          sudo chown -R $USER:$USER $ANDROID_HOME
+          sudo chown -R $USER:$USER $ANDROID_NDK_HOME
+          
+          # Verificar entorno
+          echo "=== Java Environment ==="
+          java -version
+          echo "JAVA_HOME: $JAVA_HOME"
+          ls -l $JAVA_HOME/bin/java
+          
+          echo "=== Android Environment ==="
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+          ls -l $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager || echo "SDK Manager not found"
+          
+      - name: Build APK
+        env:
+          BUILDOZER_WARN_ON_ROOT: 0
+        run: |
+          # Limpiar caché si existe
+          rm -rf .buildozer || true
+          
+          # Construir APK con log detallado
           buildozer android debug -v
       
 
